@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<SOAP-ENV:Body>
+<sendNumber>
+    <x xsi:type="xsd:string">lål den returnerer</x>
+    <y xsi:type="xsd:int">2</y>
+    <z xsi:type="xsd:int">3</z>
+    <o>
+        <o>
+            <x xsi:type="xsd:int">3</x>
+        </o>
+    </o>
+</sendNumber>
+</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
