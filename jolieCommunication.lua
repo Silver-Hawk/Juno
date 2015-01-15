@@ -28,10 +28,12 @@ end
 --host defualts to localhost ("*" means localhost), port defualts to 8090
 function JC:startServer(host, port)
   self.server = assert(socket.bind(host or "*", port or 8090))
+  return self.server
 end
 
 function JC:startClient(host, port)
   self.client = assert(socket.connect(self.clienthost or "localhost", self.clientport or 8090))
+  return self.client
 end
 
 function JC:updateClient(host, port)
@@ -40,7 +42,11 @@ function JC:updateClient(host, port)
 end
 
 function JC:getIpAndPort()
-  local ip, port = self.server:getIpAndPort()
+  if(self.client) then
+    local ip, port = self.client:getpeername() end
+  if(self.server) then
+    local ip, port = self.server:getIpAndPort() end
+
   return ip, port
 end
 
@@ -206,7 +212,15 @@ function JC:xmlToTable(x)
       StartElement = function (parser, name, attr)
           count = count + 1
           levels[count] = {}
-          levels[count-1][name] = levels[count]
+          namecount = 0
+          if(levels[count-1][name]) then
+            while(levels[count-1][name..namecount]) do
+              namecount = namecount + 1 
+            end
+            levels[count-1][name..namecount] = levels[count]
+          else
+            levels[count-1][name] = levels[count]
+          end
       end,
       EndElement = function (parser, name)
           count = count - 1
@@ -234,6 +248,12 @@ function JC:jolieServer(path, ip, port)
 
   print(assert(line) == '[SERVER_START]')
   print("server started")
+end
+
+function JC:jolieGetIpHost()
+  ip, host = self:startClient():getstats()
+  self.client:close()
+  return {ip, host}
 end
 
 

@@ -1,17 +1,20 @@
 include "console.iol"
 include "myInterface.iol"
 
-constants
-{
-    myLocation = "",
-    myName = ""
-}
+execution{ single }
 
 inputPort Input {
 	Location: myLocation
 	Protocol: soap
 	Interfaces: MyInterface
 }
+
+constants
+{
+    myLocation = "",
+    myName = ""
+}
+
 
 main
 {
@@ -31,10 +34,32 @@ main
 			y.number = x.number + 6
 		}
 	] { nullProcess }
+	
+
 	[
 		getMessage( void ) ( m ){
-			m << message[0]
+			m << messages
 		}
-	]{ nullProcess }	 
+	]{
+		undef(m);
+		undef(messages[0])
+	}
+
+	[
+		getMessages( void ) ( m ){
+			undef(m);
+			m.messages << messages
+		}
+	]{
+		undef( m )
+	}
+
+	[
+		putMessage( m ) ( m ){
+			if(m.id == "new") m.id = new;
+			messages[#messages] << m
+		}
+	] { nullProcess }
+
 	}
 }

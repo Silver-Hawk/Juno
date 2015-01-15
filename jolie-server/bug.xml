@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<SOAP-ENV:Body>
+		<getMessagesResponse>
+			<messages>
+				<id xsi:type="xsd:string">new</id>
+				<m xsi:type="xsd:double">4.0</m>
+				<sender xsi:type="xsd:string">Jesper Lund</sender>
+			</messages>
+			<messages>
+				<id xsi:type="xsd:string">new</id>
+				<m xsi:type="xsd:double">5.0</m>
+				<sender xsi:type="xsd:string">Jesper Lund</sender>
+			</messages>
+			<messages>
+				<id xsi:type="xsd:string">new</id>
+				<m xsi:type="xsd:double">6.0</m>
+				<sender xsi:type="xsd:string">Jesper Lund</sender>
+			</messages>
+		</getMessagesResponse>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<SOAP-ENV:Body>
+		<getMessagesResponse>
+			<number xsi:type="xsd:int">0</number>
+			<id xsi:type="xsd:string">new</id>
+			<m xsi:type="xsd:double">4.0</m>
+			<sender xsi:type="xsd:string">Jesper Lund</sender>
+		</getMessagesResponse>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

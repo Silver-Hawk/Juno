@@ -16,16 +16,35 @@ local RG = love.math.newRandomGenerator(love.timer.getTime())
 function love.load()
   local s = jc:new()
   s:jolieServer()
+
+  print(i(s:jolieGetIpHost()))
   
   print(i(s:requestResponse('sendNumber', {["number"] = 5})))
   
   print(i(s.lastResponse))
   --print(i(s.lastResponse))
 
-  --s:startClient()
-  print(i(s:requestResponse('getMessage', {})))
-  print(i(s:requestResponse('getMessage', {})))
-  print(i(s:requestResponse('getMessage', {})))
+  print("Get message test")
+  s:requestResponse('putMessage', {["m"] = 1, ["sender"] = s:getIpAndPort(), ["id"] = 'new'})
+  s:requestResponse('putMessage', {["m"] = 2, ["sender"] = s:getIpAndPort(), ["id"] = 'new'})
+  s:requestResponse('putMessage', {["m"] = 3, ["sender"] = s:getIpAndPort(), ["id"] = 'new'})
+  
+  print(i(s:requestResponse('getMessage')))
+  print(s:requestResponse('getMessage').id)
+  print(s:requestResponse('getMessage').id)
+  print(s:requestResponse('getMessage').id)
+
+  print("Get messages test")
+  s:requestResponse('putMessage', {["m"] = 4, ["sender"] = s:getIpAndPort(), ["id"] = 'new'})
+  s:requestResponse('putMessage', {["m"] = 5, ["sender"] = s:getIpAndPort(), ["id"] = 'new'})
+  s:requestResponse('putMessage', {["m"] = 6, ["sender"] = s:getIpAndPort(), ["id"] = 'new'})
+  messages = s:requestResponse('getMessages')
+
+  for k,m in pairs(messages) do
+  	print (i(m))
+  end
+  
+
 
   Factory = Factory:new(EC)
 
