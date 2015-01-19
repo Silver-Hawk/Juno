@@ -62,15 +62,10 @@ function Deck:addCard(type, color)
 end
 
 function Deck:getCards(n)
-  --local arg = {...}
-  --local n = arg[1]
-  
-  print(i(n))
-
-	local cards = {}
+	
+  local cards = {}
 	for c = 1,n+1 do
-		table.insert(cards, self.cards[c])
-		table.remove(self.cards, c)
+		cards["card"..c] = table.remove(self.cards, c)
 	end
 
 	return cards

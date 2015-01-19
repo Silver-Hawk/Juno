@@ -27,6 +27,9 @@ function JC:initialize()
 
   --function callbacks
   self.funcTable = {}
+
+  --message callbacks
+  self.messageCallback = {}
 end
 
 --host defualts to localhost ("*" means localhost), port defualts to 8090
@@ -58,6 +61,12 @@ end
 function JC:getIpAndPortJolieString()
   local ip, port = self:getIpAndPort()
   return "socket://".. ip..":" .. port
+end
+
+function JC:getHostAndIpFromJolieString(str)
+  local sub = string.sub(str, 10)
+  local host, ip = sub:match("([^,]+):([^,]+)")
+  return host, ip
 end
 
 --time is used for max checking time, 0 is default, 
@@ -135,9 +144,12 @@ function JC:send(action, t)
       '\n' .. 
       st
 
+
   if action == "sendMessage" then
+    print(i(t))
+    print(#t.sendMessage)
     print("sending: " .. action)
-    print(m)
+    print(st)
   end
 
   self.client:send(m)
@@ -188,17 +200,29 @@ function JC:tableToXml(t, parentname)
   if type(t) == 'table' then
     for k,v in pairs(t) do
       if type(k) == 'number' then
-        s = s .. "<" .. parentname .. ">" .. v .. "</" .. parentname .. ">"
-      else
-        s = s .. "<" .. k
+        s = s .. "<" .. parentname .. ">"
         if type(v) ~= 'table' then
+          s = s .. v
+        else
+          s = s .. self:tableToXml(v)
+        end 
+        s = s .. "</" .. parentname .. ">"
+      else
+        if type(v) ~= 'table' then
+          s = s .. "<" .. k 
           s = s .. self:variableToXmlNode(v)
-        --elseif type(v) == 'table' and v[1] ~= nil and type(v[1]) ~= 'table' then
-        --  s = s .. self:variableToXmlNode(v[1])
+          s = s .. "</" .. k .. ">"
+        elseif type(v) == 'table' and #v == 1 and type(v[1]) ~= "table" then
+          s = s .. "<" .. k 
+          s = s .. self:variableToXmlNode(v[1])
+          s = s .. "</" .. k .. ">"
+        elseif type(v) == 'table' and #v > 0 then
+          s = s .. self:tableToXml(v, k)
         elseif type(v) == 'table' then
-          s = s .. ">" .. self:tableToXml(v, k)
+          s = s .. "<" .. k .. ">"
+          s = s .. self:tableToXml(v, k)
+          s = s .. "</" .. k .. ">"
         end
-        s = s .. "</" .. k .. ">"
       end
     end
   end 
@@ -209,7 +233,7 @@ function JC:variableToXmlNode(v)
   local s = ""
   if type(v) == 'number' then
     s = s .. ' xsi:type="xsd:double">' .. v
-  elseif type(v) == 'string' then
+  else --default to string
     s = s .. ' xsi:type="xsd:string">' .. v
   end
   return s
@@ -232,14 +256,10 @@ function JC:xmlToTable(x)
   local callbacks = {
       StartElement = function (parser, name, attr)
           count = count + 1
-          levels[count] = {}
-          namecount = 0
           if(levels[count-1][name]) then
-            while(levels[count-1][name..namecount]) do
-              namecount = namecount + 1 
-            end
-            levels[count-1][name..namecount] = levels[count]
+            levels[count] = levels[count-1][name]
           else
+            levels[count] = {}
             levels[count-1][name] = levels[count]
           end
       end,
@@ -265,7 +285,8 @@ function JC:jolieServer(path, ip, port)
   port = port or 8090
   ip = ip or "localhost"
 
-  self.jhandle = io.popen('jolie '.. path ..' -C myLocation=\\"socket://'.. ip ..':' .. port ..'\\" -C targetLocation=\\"socket://localhost:8090\\"')
+  --socket://localhost:8090
+  self.jhandle = io.popen('jolie '.. path ..' -C myLocation=\\"socket://'.. ip ..':' .. port ..'\\" -C targetLocation=\\"\\"')
   --self.jhandle = io.popen('jolie ./jolie-server/test/server.ol -C myLocation=\\"socket://localhost:' .. port ..'\\"')
   line = self.jhandle:read()
 
@@ -302,9 +323,24 @@ function JC:putMessage(m)
   return self:requestResponse('putMessage', t)
 end
 
-function JC:sendMessage(m, target)
-  local t = {["m"] = m, ["sender"] = self:getIpAndPortJolieString(), ["target"] = target, ["id"] = "new"}
+function JC:sendMessage(m, target, id)
+  local t = {["m"] = m, ["sender"] = self:getIpAndPortJolieString(), ["target"] = target, ["id"] = (id or "new")}
   return self:requestResponse('sendMessage', t)
+end
+
+function JC:callExtFunction(funcId, args, target, callbackobject, callbackfunction)
+  local t = {
+    ["func"] = funcId,
+    ["args"] = args
+  }
+
+  local r = self:normalizeTable(self:sendMessage(t, target))
+
+  if callbackobject then
+    self:addFunction(r.id, callbackobject, callbackfunction, self.messageCallback)
+  end
+
+  return r
 end
 
 function JC:resolveMessage(m)
@@ -312,9 +348,12 @@ function JC:resolveMessage(m)
 end
 
 --function handling
-function JC:addFunction(id, classobject, classfunction)
+function JC:addFunction(id, classobject, classfunction, specificFunctable)
   classfunction = classfunction or id
-  self.funcTable[id] = 
+  --use table specified or default to function table
+  specificFunctable = specificFunctable or self.funcTable
+  
+  specificFunctable[id] = 
   function (...)
     return classobject[classfunction](classobject, ...)
   end
@@ -324,7 +363,16 @@ function JC:invokeCallback(id, ...)
   if self.funcTable[id] then
     return self.funcTable[id](...)
   else
-    print("callback of function " .. id .. "isn't possible, function doesn't exist in table.")
+    print("callback of function " .. id .. " isn't possible, function doesn't exist in table.")
+    return nil
+  end
+end
+
+function JC:invokeCallbackMessageTable(id, ...)
+  if self.messageCallback[id] then
+    return self.messageCallback[id](...)
+  else
+    print("callback of function " .. id .. " isn't possible, function doesn't exist in table.")
     return nil
   end
 end

@@ -1,8 +1,6 @@
 include "console.iol"
 include "myInterface.iol"
 
-execution{ single }
-
 inputPort Input {
 	Location: myLocation
 	Protocol: soap
@@ -26,6 +24,13 @@ constants
 main
 {
 	println@Console("[SERVER_START]\n")();
+
+
+/*	Output.location = "socket://localhost:8090";
+
+	tm.n.m = "test";
+	putMessage@Output( tm ) ( tm2 );
+*/
 
 	while (true) {
 		[ 
@@ -75,7 +80,7 @@ main
 
 		[
 			sendMessage( m ) ( m ){
-				Output.Location = m.target;
+				Output.location = m.target;
 				putMessage@Output( m ) ( m )
 			}
 		] {
