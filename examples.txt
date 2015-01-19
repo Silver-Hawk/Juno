@@ -1,0 +1,143 @@
+From Lua to Jolie:
+
+Lua table:
+{
+	sendMessage = {
+		target = { "socket://localhost:8090" }
+		m = {
+			func = { "getCards" }
+			args = {
+				"7",
+				"2"
+			}
+		}
+		sender = { "socket://localhost:8091" }
+		id = { "new" }
+	}
+}
+
+*note that args = { "7", "2" }, is equivalent to args[1] = 7, args[2] = 2
+
+this doesn't work, as jolie doesn't interpret the args[1], args[2] as args = { "7", "2" }, i'm aware that lua starts indexes at 1 and jolie at 0.
+
+Conversion:
+<?xml version="1.0" encoding="utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<SOAP-ENV:Body>
+		<sendMessage>
+			<target xsi:type="xsd:string">socket://localhost:8090</target>
+			<m>
+				<func xsi:type="xsd:string">getCards</func>
+				<args>
+					<1 xsi:type="xsd:double">7</1>
+					<2 xsi:type="xsd:double">2</2>
+				</args>
+			</m>
+			<sender xsi:type="xsd:string">socket://localhost:8091</sender>
+			<id xsi:type="xsd:string">new</id>
+		</sendMessage>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+
+Lua table:
+{
+	sendMessage = {
+		target = { "socket://localhost:8090" }
+		m = {
+			func = { "getCards" }
+			args = {
+				n1 = "7",
+				n2 = "2"
+			}
+		}
+		sender = { "socket://localhost:8091" }
+		id = { "new" }
+	}
+}
+
+*this works, because the args are now named.
+
+Conversion:
+<?xml version="1.0" encoding="utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<SOAP-ENV:Body>
+		<sendMessage>
+			<target xsi:type="xsd:string">socket://localhost:8090</target>
+			<m>
+				<func xsi:type="xsd:string">getCards</func>
+				<args>
+					<n2 xsi:type="xsd:double">2</n2>
+					<n1 xsi:type="xsd:double">7</n1>
+				</args>
+			</m><sender xsi:type="xsd:string">socket://localhost:8091</sender>
+			<id xsi:type="xsd:string">new</id>
+		</sendMessage>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+From Jolie to lua
+
+Jolie Object:
+y.test.hey = "some string";
+y.test.num = 1337;
+y.hest.n1.n2.n3 = 4;
+y[0] = 1;
+y[1] = 2;
+y[2] = 3
+
+*the one (1) is placed after the getSyntax response, and the two (2) and three (3) are missing. Is this a bug, or am I using jolie incorrect when sending a object through the soap
+protocol?
+
+Conversion:
+<?xml version="1.0" encoding="utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<SOAP-ENV:Body>
+		<getSyntaxResponse xsi:type="xsd:int">1
+			<test>
+				<hey xsi:type="xsd:string">some string</hey>
+				<num xsi:type="xsd:int">1337</num>
+			</test>
+			<hest>
+				<n1>
+					<n2>
+						<n3 xsi:type="xsd:int">4</n3>
+					</n2>
+				</n1>
+			</hest>
+		</getSyntaxResponse>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+
+Jolie Object:
+y.test.hey = "some string";
+y.test.num = 1337;
+y.hest.n1.n2.n3 = 4;
+y.test2[1] = 1;
+y.test2[2] = 2;
+y.test2[3] = 3
+
+This works but it creates a tag for every index in test2, this might be the right way to do it, and maybe I should just adapt my lua xml parser to deploy this kind of structure?
+
+Conversion:
+<?xml version="1.0" encoding="utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<SOAP-ENV:Body>
+		<getSyntaxResponse>
+			<test2 xsi:type="xsd:int">1</test2>
+			<test2 xsi:type="xsd:int">2</test2>
+			<test2 xsi:type="xsd:int">3</test2>
+			<test>
+				<hey xsi:type="xsd:string">some string</hey>
+				<num xsi:type="xsd:int">1337</num>
+			</test>
+			<hest>
+				<n1>
+					<n2>
+						<n3 xsi:type="xsd:int">4</n3>
+					</n2>
+				</n1>
+			</hest>
+		</getSyntaxResponse>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

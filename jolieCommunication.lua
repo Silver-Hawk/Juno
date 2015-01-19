@@ -8,6 +8,7 @@ class = require 'middleclass'
 -- load namespace
 local socket = require("socket")
 local lxp = require ("lxp")
+local lom = require("lxp.lom")
 
 JC = class('JolieConnector')
 
@@ -23,6 +24,9 @@ function JC:initialize()
   --host/client data with default
   self.clienthost = "localhost"
   self.clientport = 8090
+
+  --function callbacks
+  self.funcTable = {}
 end
 
 --host defualts to localhost ("*" means localhost), port defualts to 8090
@@ -42,12 +46,18 @@ function JC:updateClient(host, port)
 end
 
 function JC:getIpAndPort()
-  if(self.client) then
+  --[[if(self.client) then
     local ip, port = self.client:getpeername() end
   if(self.server) then
     local ip, port = self.server:getIpAndPort() end
-
+  ]]
+  local ip, port = self.clienthost, self.clientport
   return ip, port
+end
+
+function JC:getIpAndPortJolieString()
+  local ip, port = self:getIpAndPort()
+  return "socket://".. ip..":" .. port
 end
 
 --time is used for max checking time, 0 is default, 
@@ -125,6 +135,11 @@ function JC:send(action, t)
       '\n' .. 
       st
 
+  if action == "sendMessage" then
+    print("sending: " .. action)
+    print(m)
+  end
+
   self.client:send(m)
 end
 
@@ -132,11 +147,13 @@ function JC:requestResponse(action, t, unwrapMessage)
   self:startClient() 
 
   self:send(action, t)
-  unwrapMessage = unwrapMessage or true
+  if unwrapMessage == nil then
+    unwrapMessage = true
+  end
   
   local r = {}
   while true do
-    s, status, partial = self.client:receive("*l")
+    local s, status, partial = self.client:receive("*l")
     --print(s or partial)
     if s ~= "" then
       r[#r+1] = s
@@ -165,20 +182,24 @@ function JC:wrapAction(action, t)
   end
 end
 
-function JC:tableToXml(t)
+function JC:tableToXml(t, parentname)
   local s = ""
 
   if type(t) == 'table' then
     for k,v in pairs(t) do
-      s = s .. "<" .. k
-      if type(v) ~= 'table' then
-        s = s .. self:variableToXmlNode(v)
-      elseif type(v) == 'table' and v[1] ~= nil and type(v[1]) ~= 'table' then
-        s = s .. self:variableToXmlNode(v[1])
-      elseif type(v) == 'table' then
-        s = s .. ">" .. self:tableToXml(v)
+      if type(k) == 'number' then
+        s = s .. "<" .. parentname .. ">" .. v .. "</" .. parentname .. ">"
+      else
+        s = s .. "<" .. k
+        if type(v) ~= 'table' then
+          s = s .. self:variableToXmlNode(v)
+        --elseif type(v) == 'table' and v[1] ~= nil and type(v[1]) ~= 'table' then
+        --  s = s .. self:variableToXmlNode(v[1])
+        elseif type(v) == 'table' then
+          s = s .. ">" .. self:tableToXml(v, k)
+        end
+        s = s .. "</" .. k .. ">"
       end
-      s = s .. "</" .. k .. ">"
     end
   end 
   return s
@@ -242,19 +263,91 @@ end
 
 function JC:jolieServer(path, ip, port)
   port = port or 8090
-  self.jhandle = io.popen('jolie ./jolie-server/test/server.ol -C myLocation=\\"socket://localhost:' .. port ..'\\"')
+  ip = ip or "localhost"
+
+  self.jhandle = io.popen('jolie '.. path ..' -C myLocation=\\"socket://'.. ip ..':' .. port ..'\\" -C targetLocation=\\"socket://localhost:8090\\"')
   --self.jhandle = io.popen('jolie ./jolie-server/test/server.ol -C myLocation=\\"socket://localhost:' .. port ..'\\"')
   line = self.jhandle:read()
 
   print(assert(line) == '[SERVER_START]')
   print("server started")
+
+  self:updateClient(host, port)
 end
 
 function JC:jolieGetIpHost()
-  ip, host = self:startClient():getstats()
+  local ip, host = self:startClient():getstats()
   self.client:close()
   return {ip, host}
 end
 
 
-return JC
+--message handling
+function JC:messageLength(t)
+  local count = 0
+  for _ in pairs(t) do count = count + 1 end
+  return count
+end
+
+function JC:getMessage()
+  return self:requestResponse('getMessage')
+end
+
+function JC:getMessages()
+  return self:requestResponse('getMessages')
+end
+
+function JC:putMessage(m)
+  local t = {["m"] = m, ["sender"] = self:getIpAndPortJolieString(), ["id"] = "new"}
+  return self:requestResponse('putMessage', t)
+end
+
+function JC:sendMessage(m, target)
+  local t = {["m"] = m, ["sender"] = self:getIpAndPortJolieString(), ["target"] = target, ["id"] = "new"}
+  return self:requestResponse('sendMessage', t)
+end
+
+function JC:resolveMessage(m)
+
+end
+
+--function handling
+function JC:addFunction(id, classobject, classfunction)
+  classfunction = classfunction or id
+  self.funcTable[id] = 
+  function (...)
+    return classobject[classfunction](classobject, ...)
+  end
+end
+
+function JC:invokeCallback(id, ...)
+  if self.funcTable[id] then
+    return self.funcTable[id](...)
+  else
+    print("callback of function " .. id .. "isn't possible, function doesn't exist in table.")
+    return nil
+  end
+end
+
+--converts a table to a more well structured tree 
+function JC:normalizeTable(t)
+  local _t = {}
+
+  for k,v in pairs(t) do
+    if type(v) == "table" and #v == 1 then
+      if type(v[1]) == "table" then 
+        _t[k] = self:normalizeTable(v[1])
+      else
+        _t[k] = v[1]
+      end
+    elseif type(v) == "table" then
+      _t[k] = self:normalizeTable(v)
+    else
+      _t[k] = v
+    end
+  end
+
+  return _t
+end
+
+return JC 

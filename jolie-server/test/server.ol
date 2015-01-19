@@ -9,9 +9,16 @@ inputPort Input {
 	Interfaces: MyInterface
 }
 
+outputPort Output {
+    Location: targetLocation
+    Protocol: soap
+    Interfaces: MyInterface
+}
+
 constants
 {
     myLocation = "",
+    targetLocation = "",
     myName = ""
 }
 
@@ -20,46 +27,60 @@ main
 {
 	println@Console("[SERVER_START]\n")();
 
-	message.m = "[SERVER_START]";
-	message.sender = myName;
-	message.id = new;
-
-	//println@Console(myLocation)();
-
-	messages[#messages] << message;
-
 	while (true) {
-	[ 
-		sendNumber( x ) ( y ){
-			y.number = x.number + 6
-		}
-	] { nullProcess }
-	
+		[ 
+			sendNumber( x ) ( y ){
+				y.number = x.number + 6
+			}
+		] { nullProcess }
 
-	[
-		getMessage( void ) ( m ){
-			m << messages
+		[
+			getSyntax( void ) ( y ){
+				y.test.hey = "some string";
+				y.test.num = 1337;
+				y.hest.n1.n2.n3 = 4;
+				y[0] = 1;
+				y[1] = 2;
+				y[2] = 3
+			}
+		] {
+			nullProcess
 		}
-	]{
-		undef(m);
-		undef(messages[0])
-	}
 
-	[
-		getMessages( void ) ( m ){
-			undef(m);
-			m.messages << messages
+		[
+			getMessage( void ) ( messages[0] ){
+				nullProcess
+			}
+		]{
+			undef(messages[0])
 		}
-	]{
-		undef( m )
-	}
 
-	[
-		putMessage( m ) ( m ){
-			if(m.id == "new") m.id = new;
-			messages[#messages] << m
+		[
+			getMessages( void ) ( m ){
+				m.messages << messages
+			}
+		]{
+			undef( m );
+			undef(messages)
 		}
-	] { nullProcess }
+
+		[
+			putMessage( m ) ( m ){
+				if(m.id == "new") m.id = new;
+				messages[#messages] << m
+			}
+		] { 
+			undef( m ) 
+		}
+
+		[
+			sendMessage( m ) ( m ){
+				Output.Location = m.target;
+				putMessage@Output( m ) ( m )
+			}
+		] {
+			undef(m)
+		}
 
 	}
 }
