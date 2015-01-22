@@ -7,5 +7,6 @@ RequestResponse:
 	getMessages(undefined) (undefined),
 	putMessage(undefined) (undefined),
 	sendMessage(undefined) (undefined),
-	getSyntax(void) (undefined)
+	startLobby(void) (undefined),
+	joinLobby(undefined) (undefined)
 }

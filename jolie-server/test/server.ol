@@ -24,34 +24,10 @@ constants
 main
 {
 	println@Console("[SERVER_START]\n")();
-
-
-/*	Output.location = "socket://localhost:8090";
-
-	tm.n.m = "test";
-	putMessage@Output( tm ) ( tm2 );
-*/
+	Input.location = myLocation;
 
 	while (true) {
-		[ 
-			sendNumber( x ) ( y ){
-				y.number = x.number + 6
-			}
-		] { nullProcess }
-
-		[
-			getSyntax( void ) ( y ){
-				y.test.hey = "some string";
-				y.test.num = 1337;
-				y.hest.n1.n2.n3 = 4;
-				y[0] = 1;
-				y[1] = 2;
-				y[2] = 3
-			}
-		] {
-			nullProcess
-		}
-
+		//Message operations
 		[
 			getMessage( void ) ( messages[0] ){
 				nullProcess
@@ -86,6 +62,39 @@ main
 		] {
 			undef(m)
 		}
+		//Lobby operations
+		[
+			startLobby( void ) ( r ) {
+				iplist[#iplist] = Input.location;
+				lobbystarted = true;
+				r.iplist << iplist
+			}
+		] {
+			undef(r)
+		}
+		[
+			joinLobby( m ) ( r ) {
+				//check if we are on the right server
+				if(m.target == input.location)
+					if(lobbystarted)
+					{
+						iplist[#iplist] = m.sender;
+						r.iplist << iplist
+					}
+					else
+					{
+						r = null
+					}
+				//otherwise forward to target server
+				else
+				{
+					Output.location = m.target;
+					joinLobby@Output( m ) ( r )
+				}
 
+			}
+		] {
+			undef(r)
+		}
 	}
 }

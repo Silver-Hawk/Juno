@@ -1,5 +1,5 @@
 --[[
-  Jolie based connector class to send/recieve soap messages
+  Jolie based connector class to send/recieve SOAP messages
 
   Jolie-lang.org for more information
 ]]
@@ -8,7 +8,6 @@ class = require 'middleclass'
 -- load namespace
 local socket = require("socket")
 local lxp = require ("lxp")
-local lom = require("lxp.lom")
 
 JC = class('JolieConnector')
 
@@ -143,14 +142,6 @@ function JC:send(action, t)
       'SOAPAction: "/' .. action .. '"\n' ..
       '\n' .. 
       st
-
-
-  if action == "sendMessage" then
-    print(i(t))
-    print(#t.sendMessage)
-    print("sending: " .. action)
-    print(st)
-  end
 
   self.client:send(m)
 end
@@ -302,7 +293,6 @@ function JC:jolieGetIpHost()
   return {ip, host}
 end
 
-
 --message handling
 function JC:messageLength(t)
   local count = 0
@@ -331,7 +321,8 @@ end
 function JC:callExtFunction(funcId, args, target, callbackobject, callbackfunction)
   local t = {
     ["func"] = funcId,
-    ["args"] = args
+    ["args"] = args,
+    ["type"] = "call"
   }
 
   local r = self:normalizeTable(self:sendMessage(t, target))
@@ -341,6 +332,41 @@ function JC:callExtFunction(funcId, args, target, callbackobject, callbackfuncti
   end
 
   return r
+end
+
+function JC:handleMessages()
+  local msgs = self:getMessages()
+
+  --parse all messages
+  for k,t in pairs(msgs) do
+    --nomalize table for easier accessing
+    print(i(t))
+    t = self:normalizeTable(t)
+
+    print(i(t))
+    if self:messageLength(t) > 0 then
+      if t.m.type == "call" then
+        print(i(t))
+        print("invoking callback (".. t.m.func ..") with table: ")
+        print(i(t.m.args))
+        local r = nil
+        if type(t.m.args) == "table" then
+          r = {['type'] = 'response', ['response'] = self:invokeCallback(t.m.func, unpack(t.m.args))}
+        else
+          r = {['type'] = 'response', ['response'] = self:invokeCallback(t.m.func, t.m.args)}
+        end
+
+        print("return to sender")
+        print(i(r))
+        --return to sender - as elvis would have said
+        
+        print(i(self:sendMessage(r, t.sender, t.id)))
+      elseif t.m.type == "response" then
+        print(i(self.messageCallback))
+        self:invokeCallbackMessageTable(t.id, t.m.response)
+      end
+    end
+  end
 end
 
 function JC:resolveMessage(m)
@@ -359,11 +385,17 @@ function JC:addFunction(id, classobject, classfunction, specificFunctable)
   end
 end
 
+function JC:addGenericFunction(id, func, specificFunctable)
+  specificFunctable = specificFunctable or self.funcTable
+  specificFunctable[id] = func
+end
+
+
 function JC:invokeCallback(id, ...)
   if self.funcTable[id] then
     return self.funcTable[id](...)
   else
-    print("callback of function " .. id .. " isn't possible, function doesn't exist in table.")
+    print("callback of function " .. tostring(id) .. " isn't possible, function doesn't exist in table.")
     return nil
   end
 end
@@ -372,7 +404,7 @@ function JC:invokeCallbackMessageTable(id, ...)
   if self.messageCallback[id] then
     return self.messageCallback[id](...)
   else
-    print("callback of function " .. id .. " isn't possible, function doesn't exist in table.")
+    print("callback of function " .. tostring(id) .. " isn't possible, function doesn't exist in table.")
     return nil
   end
 end

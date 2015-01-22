@@ -76,7 +76,7 @@ Conversion:
 </SOAP-ENV:Envelope>
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
-From Jolie to lua
+From Jolie object to xml
 
 Jolie Object:
 y.test.hey = "some string";
@@ -109,7 +109,7 @@ Conversion:
 	</SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 
-Jolie Object:
+Jolie Object to xml:
 y.test.hey = "some string";
 y.test.num = 1337;
 y.hest.n1.n2.n3 = 4;
@@ -139,5 +139,64 @@ Conversion:
 				</n1>
 			</hest>
 		</getSyntaxResponse>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<SOAP-ENV:Body>
+		<sendMessage>
+			<target>socket://localhost:8091</target>
+			<m>
+				<card2>2</card2>
+				<card2>3</card2>
+				<card7>0</card7>
+				<card7>2</card7>
+				<card3>3</card3>
+				<card3>2</card3>
+				<card8>10</card8>
+				<card8>2</card8>
+				<card4>9</card4>
+				<card4>3</card4>
+				<card6>2</card6>
+				<card6>2</card6>
+				<card1>10</card1>
+				<card1>2</card1>
+				<card5>1</card5>
+				<card5>0</card5>
+			</m>
+			<sender xsi:type="xsd:string">socket://localhost:8090</sender>
+			<id>11a3fb23-03c1-4d65-818a-705b40c1e974</id>
+		</sendMessage>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+
+<?xml version="1.0" encoding="utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<SOAP-ENV:Body>
+		<sendMessage>
+			<target>socket://localhost:8093</target>
+			<m>
+				<response>
+					<card6>10</card6>
+					<card6>3</card6>
+					<card3>8</card3>
+					<card3>3</card3>
+					<card8>7</card8>
+					<card8>0</card8>
+					<card4>9</card4>
+					<card4>2</card4>
+					<card7>11</card7>
+					<card7>2</card7>
+					<card5>3</card5>
+					<card5>2</card5>
+					<card1>1</card1>
+					<card1>3</card1>
+				</response>
+			</m>
+			<sender xsi:type="xsd:string">socket://localhost:8090</sender>
+			<id>940dd3b7-3b04-4434-b9fb-4076783101ea</id>
+		</sendMessage>
 	</SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
