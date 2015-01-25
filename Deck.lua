@@ -45,23 +45,6 @@ function Deck:initialize()
   print(assert(#self.cards) == 108)
 end
 
-function Deck:shuffleCards(RG)
-	local function shuffle(array)
-	    local n = #array
-	    local j
-	    for i=n+1, 1, -1 do
-	        j = RG:random(i)
-
-	        array[j],array[i] = array[i],array[j]
-	    end
-	    return array
-	end
-
-	shuffle(self.cards)
-	shuffle(self.cards)
-end
-
-
 function Deck:addCard(type, color)
 	table.insert(self.cards, {type, color}) 
 end

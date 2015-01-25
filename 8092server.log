@@ -1,0 +1,14 @@
+[server.ol] 	1.	^ LOAD	Java Service Loader			joliex.io.ConsoleService
+[server.ol] 	2.	<< SR	println@Console			SENDING	MSG_ID:1
+						Value: = [SERVER_START]
+ : java.lang.String
+
+[SERVER_START]
+
+[server.ol] 	3.	<< SR	println@Console			SENT	MSG_ID:1
+						Value: = [SERVER_START]
+ : java.lang.String
+
+[server.ol] 	4.	<< SR	println@Console			RECEIVED	MSG_ID:1
+						Value:
+

@@ -26,6 +26,7 @@ function JC:initialize()
 
   --function callbacks
   self.funcTable = {}
+  self.triggers = {}
 
   --message callbacks
   self.messageCallback = {}
@@ -65,7 +66,7 @@ end
 function JC:getHostAndIpFromJolieString(str)
   local sub = string.sub(str, 10)
   local host, ip = sub:match("([^,]+):([^,]+)")
-  return host, ip
+  return {host, ip}
 end
 
 --time is used for max checking time, 0 is default, 
@@ -121,7 +122,11 @@ end
 function JC:unwrapMessage(action, t)
   if t then
     local m = self:xmlToTable(t[#t])
-    m = m["SOAP-ENV:Envelope"]["SOAP-ENV:Body"][action .. "Response"]
+    if m["SOAP-ENV:Envelope"] then
+      if m["SOAP-ENV:Envelope"]["SOAP-ENV:Body"] then
+        m = m["SOAP-ENV:Envelope"]["SOAP-ENV:Body"][action .. "Response"]
+      end
+    end
     return m
   else
     return t
@@ -143,27 +148,28 @@ function JC:send(action, t)
       '\n' .. 
       st
 
-  self.client:send(m)
+  return self.client:send(m)
 end
 
 function JC:requestResponse(action, t, unwrapMessage)
   self:startClient() 
+  self.client:settimeout(5)
 
   self:send(action, t)
   if unwrapMessage == nil then
     unwrapMessage = true
   end
-  
+
   local r = {}
   while true do
     local s, status, partial = self.client:receive("*l")
-    --print(s or partial)
-    if s ~= "" then
+
+    if s then
       r[#r+1] = s
     elseif partial ~= "" then
       r[#r+1] = partial
     end
-    if status == "closed"then 
+    if status == "closed" or status == "timeout" then 
       break 
     end
   end
@@ -305,7 +311,7 @@ function JC:getMessage()
 end
 
 function JC:getMessages()
-  return self:requestResponse('getMessages')
+  return self:requestResponse('getMessages', {}, false)
 end
 
 function JC:putMessage(m)
@@ -315,7 +321,18 @@ end
 
 function JC:sendMessage(m, target, id)
   local t = {["m"] = m, ["sender"] = self:getIpAndPortJolieString(), ["target"] = target, ["id"] = (id or "new")}
-  return self:requestResponse('sendMessage', t)
+
+  print(target)
+  print(i(self:getHostAndIpFromJolieString(target)))
+  self:updateClient(unpack(self:getHostAndIpFromJolieString(target)))
+  
+  print("in sendMessage")
+  
+  local mes = self:requestResponse('putMessage', t)
+
+  self:updateClient(unpack(self:getHostAndIpFromJolieString(t.sender)))
+
+  return mes
 end
 
 function JC:callExtFunction(funcId, args, target, callbackobject, callbackfunction)
@@ -325,8 +342,11 @@ function JC:callExtFunction(funcId, args, target, callbackobject, callbackfuncti
     ["type"] = "call"
   }
 
+  print("in callExtFunction")
   local r = self:normalizeTable(self:sendMessage(t, target))
 
+  print(i(r))
+  print("in2 callExtFunction")
   if callbackobject then
     self:addFunction(r.id, callbackobject, callbackfunction, self.messageCallback)
   end
@@ -334,9 +354,23 @@ function JC:callExtFunction(funcId, args, target, callbackobject, callbackfuncti
   return r
 end
 
+function JC:callMultipleExtFunction(funcId, args, targets, callbackobject, callbackfunction)
+  for _,target in pairs(targets) do
+    self:callExtFunction(funcId, args, target, callbackobject, callbackfunction)
+  end
+end
+
+--[[
 function JC:handleMessages()
   local msgs = self:getMessages()
 
+  if self:messageLength(msgs) > 0 then
+    print("in handle message")
+    if msgs ~= nil and msgs ~= {} then
+      print(i(msgs))
+    end
+    print("in handle message after")
+  end
   --parse all messages
   for k,t in pairs(msgs) do
     --nomalize table for easier accessing
@@ -363,17 +397,65 @@ function JC:handleMessages()
         print(i(self:sendMessage(r, t.sender, t.id)))
       elseif t.m.type == "response" then
         print(i(self.messageCallback))
-        self:invokeCallbackMessageTable(t.id, t.m.response)
+        if type(t.m.args) == "table" then
+          self:invokeCallbackMessageTable(t.id, unpack(t.m.response))
+        else
+          self:invokeCallbackMessageTable(t.id, t.m.response)
+        end
+      end
+    end
+  end
+end]]
+
+function JC:handleMessage()
+  local t = self:getMessage()
+  --parse all messages
+  if self:messageLength(t) > 0 then
+    --nomalize table for easier accessing
+    print(i(t))
+    t = self:normalizeTable(t)
+
+    print(i(t))
+    if self:messageLength(t) > 0 then
+      if t.m.type == "call" then
+        print(i(t))
+        print("invoking callback (".. t.m.func ..") with table: ")
+        print(i(t.m.args))
+        local r = nil
+        if type(t.m.args) == "table" then
+          r = {['type'] = 'response', ['response'] = self:invokeCallback(t.m.func, t.m.args)}
+        else
+          r = {['type'] = 'response', ['response'] = self:invokeCallback(t.m.func, t.m.args)}
+        end
+
+        if self.triggers[t.m.func] then
+          print("invoking trigger for function " .. t.m.func)
+          self:invokeTrigger(t.m.func)
+        end
+        
+        print("return to sender")
+        print(i(r))
+        --return to sender - as elvis would have said
+        
+        print(i(self:sendMessage(r, t.sender, t.id)))
+      elseif t.m.type == "response" then
+        print(i(self.messageCallback))
+        if type(t.m.args) == "table" then
+          self:invokeCallbackMessageTable(t.id, t.m.response)
+        else
+          self:invokeCallbackMessageTable(t.id, t.m.response)
+        end
       end
     end
   end
 end
 
-function JC:resolveMessage(m)
-
+--function handling
+--add a trigger to a specific function in the function table
+function JC:addGenericTrigger(id, func)
+  self.triggers[id] = func
 end
 
---function handling
 function JC:addFunction(id, classobject, classfunction, specificFunctable)
   classfunction = classfunction or id
   --use table specified or default to function table
@@ -392,6 +474,7 @@ end
 
 
 function JC:invokeCallback(id, ...)
+  print("in invoke callback " .. tostring(id) .. "with ... as " .. i(...))
   if self.funcTable[id] then
     return self.funcTable[id](...)
   else
@@ -400,9 +483,21 @@ function JC:invokeCallback(id, ...)
   end
 end
 
+function JC:invokeTrigger(id, ...)
+  if self.triggers[id] then
+    return self.triggers[id](...)
+  else
+    print("trigger of function " .. tostring(id) .. " isn't possible, function doesn't exist in table.")
+    return nil
+  end
+end
+
 function JC:invokeCallbackMessageTable(id, ...)
   if self.messageCallback[id] then
-    return self.messageCallback[id](...)
+    local res = self.messageCallback[id](...)
+    --remove callback after it has been used
+    self.messageCallback[id] = nil
+    return res
   else
     print("callback of function " .. tostring(id) .. " isn't possible, function doesn't exist in table.")
     return nil
