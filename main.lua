@@ -15,6 +15,7 @@ local GameController = require 'GameController'
 
 local RG = love.math.newRandomGenerator(love.timer.getTime())
 
+--assets used in the game
 images = {
   back = love.graphics.newImage("assets/back.png"),
   black = love.graphics.newImage("assets/black.png"),
@@ -29,18 +30,17 @@ fonts = {
   ["font_m"] = love.graphics.newFont("assets/LibreBaskerville-Bold.ttf", 32)
 }
 
---[[
-  cards : 550 / 425
-]]
+--create a jolie communicator class object
 s = jc()
   
 function love.load()
+  --start the jolie message passing server
   s:jolieServer('./jolie-server/test/server.ol','localhost', arg[2])
 
   --entity component system factory
   Factory = Factory:new(EC)
   
-  --create classes that controll the logic of the game
+  --create classes that control the logic of the game
   lobby = Lobby(s:getIpAndPortJolieString())
   GC = GameController(s:getIpAndPortJolieString())
   hand = Hand()
@@ -64,6 +64,7 @@ function love.load()
     lobby.lobbydraw = false
     end)
   s:addFunction("setTurn", GC)
+  s:addFunction("sendInplayCards", GC, "setCardsInPlay")
 
   if arg[2] == "8090" then
     --setup deck for server
@@ -71,18 +72,14 @@ function love.load()
     shuffleArray(deck.cards, RG)
     lobby:openLobby()
 
-    --add function that are allowed for external callback
+    --add function that are allowed for external callback for the server
     s:addFunction("getCards", deck)
     s:addFunction("joinLobby", lobby, "join")
     s:addGenericTrigger("joinLobby", function()
-      --send all ip adresses to all clients when a client joins
+      --send all ip adresses to all clients when a client joins using the joinLobby command
       s:callMultipleExtFunction("updateIpList", lobby:getClients(), lobby:getClients())
     end )
 
-    --setup lobby
-    --s:invokeCallback("updateIpList", s:requestResponse("startLobby"))
-    
-    print(i(s:putMessage({"test message"})))
   end
   
   if arg[2] ~= "8090" then
@@ -101,18 +98,68 @@ function love.update(dt)
   --update card animations
   flux.update(dt)
 
-  if GC:gameStarted() and GC:myTurn() then
-    --if it's my turn i can select card based on what is in play
-    hand:selectCards(GC:inplayCard())
-
-
-  end
-
   --update entities
   EC:update(dt)
 end
 
+function love.mousepressed(x, y, button)
+  if GC:gameStarted() and GC:myTurn() then
+    if button == "l" then
+      --if it's my turn i can select card based on what is in play
+      hand:selectCards(GC:inplayCard())
+    end
+  end
+
+  --if right mouse button is pressed reset selected cards
+  if button == "r" then
+      hand:unselectCards()
+  end
+end
+
+function passTurn()
+  --get all clients in the game
+  local allClients = GC:getClients()
+    
+  --get and set the id of the next player in line
+  local nextPlayer = GC:giveTurn()
+
+  --send the who has the turn to all players
+  s:callMultipleExtFunction("setTurn", nextPlayer, allClients)
+end
 function love.keypressed(key)
+  --send currently selected cards
+  if key == "return" and GC:gameStarted() and GC:myTurn() then
+    --get all clients in the game
+    local allClients = GC:getClients()
+    --get cards currently selected
+    local selectedCards = hand:getSelectedCards()
+
+    --only proceed if there is cards selected 
+    if tableLength(selectedCards) > 0 then
+      --send cards to other players
+      s:callMultipleExtFunction("sendInplayCards", selectedCards, allClients)
+
+      passTurn()
+    end
+  end
+
+  --draw a card and skip turn
+  if key == "d" and GC:gameStarted() and GC:myTurn() then
+    --get all clients in the game
+    local allClients = GC:getClients()
+
+    --draw a card
+    s:callExtFunction("getCards", {1} , "socket://localhost:8090", hand, "addCards")
+
+    passTurn()
+
+    --send how many cards i have to all players (+1 because card aren't added yet)
+    s:callMultipleExtFunction("setClientCardNumber", {id = GC:getMyPosId(), number = hand:getCardNumber()+1}, allClients)
+
+    --deselect any cards currently selected
+    hand:unselectCards()
+  end
+
   --check if hosts wants to start the game
   if key == "s" and lobby.open == true then
     local allClients = lobby:getClients()
@@ -124,7 +171,7 @@ function love.keypressed(key)
     
     --give each player 7 cards
     for _,client in ipairs(allClients) do
-      s:callExtFunction("addCards", deck:getCards(25), client)
+      s:callExtFunction("addCards", deck:getCards(7), client)
     end
 
     --give turn to the first player, let everyone know who has the turn
@@ -141,6 +188,12 @@ function love.keypressed(key)
 end
 
 function love.draw()
-  hand:draw()
+  --draw entities
   EC:draw()
+
+  if GC:gameStarted() then
+    --print play options
+    love.graphics.setFont(fonts.font_m)
+    love.graphics.print("Press 'D' to draw a card\nPress enter to send selected cards\nUse mouse left to select card\nUse mouse right to deselect", 600, 500, 0, 1/3)
+  end
 end

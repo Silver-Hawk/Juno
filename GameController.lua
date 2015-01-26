@@ -16,12 +16,35 @@ function GameController:start(clients)
   self.gameisstarted = true
 end
 
+function GameController:setCardsInPlay(t)
+  print(i(t))
+  local count = 1
+  while t["card"..count] ~= nil do
+    table.insert(self.cardinplay, t["card"..count])
+    count = count + 1
+  end
+end
+
 function GameController:inplayCard()
   return self.cardinplay
 end
 
 function GameController:setTurn(i)
   self.whoHasTurn = tonumber(i)
+end
+
+function GameController:giveTurn(skips)
+  skips = skips or 0
+
+  --set who has the turn and skip players if any
+  self.whoHasTurn = self.whoHasTurn + 1 + skips
+
+  --stay within the player array 
+  while self.whoHasTurn > #self.clients do
+    self.whoHasTurn = self.whoHasTurn - #self.clients
+  end
+
+  return self.whoHasTurn
 end
 
 function GameController:gameStarted()

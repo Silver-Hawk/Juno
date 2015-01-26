@@ -3,7 +3,13 @@ local Hand = class('Hand', Entity)
 function Hand:initialize()
 	Entity.initialize(self)
 
+  --cards in hand
 	self.cards = {}
+
+  --cards selected when its my turn
+  self.cardsselected = {}
+
+  --animations
   self.animations = {}
   self.animationsToBeAdded = {}
 end
@@ -109,6 +115,8 @@ function Hand:toJunoNumber(int)
   end
 
   if int == 10 then return "Ø" end
+  if int == 11 then return "R" end
+  if int == 12 then return "+2" end
 
   return int
 end
@@ -178,6 +186,13 @@ function Hand:draw()
     drawCard(v.x, v.y, self:toJunoNumber(tonumber(v.tc[1])),images[self:colorToImage(v.tc[2])], v.rot, 1/5)
   end
 
+  --draw cards selected
+  for k,v in ipairs(self.cardsselected) do
+    local x,y = 300+30*k,400
+    local c = self.cards[v]
+    drawCard(x, y, self:toJunoNumber(tonumber(c[1])),images[self:colorToImage(c[2])], 0, 1/7)
+  end
+
   --draw cards
   for k,v in pairs(self.cards) do
     if self:getNearestCard(love.mouse.getX()) == k then
@@ -205,18 +220,59 @@ function Hand:getNearestCard(mousex)
     return math.floor((math.floor(n*2) + 1)/2)
   end
 
-  print(mousex-dx)
-  print(mousex)
-  print(dx)
-  print(spcpercard)
-
   return math.max(math.min(round((mousex-dx)/spacing)+1, #self.cards), 1)
 end
 
+function Hand:assertUnoRules(selectedcard, cardsinplay)
+  if #self.cardsselected > 0 then
+    --check if its the same type
+    if self.cards[selectedcard][1] == self.cards[self.cardsselected[1]][1] then
+      return true
+    end
+  else
+    --if no cards are in play and no cards are selected then return true
+    if #cardsinplay == 0 then
+      return true
+    else
 
-function Hand:selectCards()
-  local ci = self:getNearestCard(love.mouse.getX())
+    end
+  end
 end
 
+function Hand:selectCards(cardsinplay)
+  local ci = self:getNearestCard(love.mouse.getX())
+
+  if self.cards[ci][3] == true then
+    if self:assertUnoRules(ci, cardsinplay) then
+      table.insert(self.cardsselected, ci)
+      self.cards[ci][3] = false
+    end
+  end
+
+  print(i(self.cardsselected))
+end
+
+function Hand:unselectCards()
+  for _,v in ipairs(self.cardsselected) do
+    self.cards[v][3] = true
+  end
+  self.cardsselected = {}
+end
+
+function Hand:getSelectedCards()
+  local t = {}
+  print(i(t))
+  for k,v in ipairs(self.cardsselected) do
+    print(v)
+    t["card"..k] = {self.cards[v][1], self.cards[v][2]}
+    table.remove(self.cards, v)
+  end
+  --reset selected cards
+  self.cardsselected = {}
+
+  print("Cards in hand is " .. #self.cards)
+
+  return t
+end
 
 return Hand

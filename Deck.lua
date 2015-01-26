@@ -38,11 +38,11 @@ function Deck:initialize()
 
   for i=0,3 do
     self:addCard(0,4)
-    self:addCard(1,4)
   end
 
   --make sure that all cards are created
-  print(assert(#self.cards) == 108)
+  --left out change color card
+  print(assert(#self.cards) == 104)
 end
 
 function Deck:addCard(type, color)
