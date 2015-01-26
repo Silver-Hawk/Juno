@@ -23,6 +23,12 @@ function GameController:setCardsInPlay(t)
     table.insert(self.cardinplay, t["card"..count])
     count = count + 1
   end
+
+  --convert all to numbers
+  for k,v in ipairs(self.cardinplay) do
+    self.cardinplay[k][1] = tonumber(self.cardinplay[k][1])
+    self.cardinplay[k][2] = tonumber(self.cardinplay[k][2])
+  end
 end
 
 function GameController:inplayCard()

@@ -57,12 +57,8 @@ function Hand:update(dt)
   for k,v in ipairs(self.animations) do
     if v.endx == v.x and v.endy == v.y and v.endr == v.rot then
       for k2, v2 in ipairs(self.cards) do
-        print(i(v))
-        print(i(v2))
         if tostring(v.card) == tostring(v2) then
-          print(tostring(v2[3]))
           v2[3] = true
-          print(tostring(v2[3]))
           break
         end
       end
@@ -72,10 +68,7 @@ function Hand:update(dt)
 end
 
 function Hand:addCards(t)
-  print("in hand:")
-  print(i(t))
   for _,v in pairs(t) do
-    print(i(v))
     self:addCard(tonumber(v[1]), tonumber(v[2]))
   end
 
@@ -229,14 +222,22 @@ function Hand:assertUnoRules(selectedcard, cardsinplay)
     if self.cards[selectedcard][1] == self.cards[self.cardsselected[1]][1] then
       return true
     end
+    print("enter 1")
   else
     --if no cards are in play and no cards are selected then return true
     if #cardsinplay == 0 then
+      print("enter 2")
       return true
     else
-
+      --if selected cards is the same color or type as the last one in play
+      if self.cards[selectedcard][1] == cardsinplay[#cardsinplay][1] or self.cards[selectedcard][2] == cardsinplay[#cardsinplay][2] then
+        return true
+      end 
+      print("enter 3")
     end
+    print("enter 4")
   end
+  return false
 end
 
 function Hand:selectCards(cardsinplay)
@@ -261,16 +262,24 @@ end
 
 function Hand:getSelectedCards()
   local t = {}
+
   print(i(t))
   for k,v in ipairs(self.cardsselected) do
     print(v)
     t["card"..k] = {self.cards[v][1], self.cards[v][2]}
-    table.remove(self.cards, v)
+    self.cards[v] = nil
+  end
+
+  for k,v in ipairs(self.cards) do
+    if v == nil then
+      table.remove(self.cards, k)
+    end
   end
   --reset selected cards
   self.cardsselected = {}
 
   print("Cards in hand is " .. #self.cards)
+  print(i(self.cards))
 
   return t
 end

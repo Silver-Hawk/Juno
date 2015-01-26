@@ -140,6 +140,9 @@ function love.keypressed(key)
       s:callMultipleExtFunction("sendInplayCards", selectedCards, allClients)
 
       passTurn()
+
+      --send how many cards i have to all players (+1 because card aren't added yet)
+      s:callMultipleExtFunction("setClientCardNumber", {id = GC:getMyPosId(), number = hand:getCardNumber()}, allClients)
     end
   end
 
@@ -191,7 +194,15 @@ function love.draw()
   --draw entities
   EC:draw()
 
+
   if GC:gameStarted() then
+    --draw cards currently in play
+    local ic = GC:inplayCard()
+    for k,v in ipairs(ic) do
+      local x,y = 300+30*k,300
+      drawCard(x, y, hand:toJunoNumber(tonumber(v[1])),images[hand:colorToImage(v[2])], 0, 1/6)
+    end
+
     --print play options
     love.graphics.setFont(fonts.font_m)
     love.graphics.print("Press 'D' to draw a card\nPress enter to send selected cards\nUse mouse left to select card\nUse mouse right to deselect", 600, 500, 0, 1/3)

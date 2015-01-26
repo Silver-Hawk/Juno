@@ -322,11 +322,7 @@ end
 function JC:sendMessage(m, target, id)
   local t = {["m"] = m, ["sender"] = self:getIpAndPortJolieString(), ["target"] = target, ["id"] = (id or "new")}
 
-  print(target)
-  print(i(self:getHostAndIpFromJolieString(target)))
   self:updateClient(unpack(self:getHostAndIpFromJolieString(target)))
-  
-  print("in sendMessage")
   
   local mes = self:requestResponse('putMessage', t)
 
@@ -342,11 +338,8 @@ function JC:callExtFunction(funcId, args, target, callbackobject, callbackfuncti
     ["type"] = "call"
   }
 
-  print("in callExtFunction")
-  local r = self:normalizeTable(self:sendMessage(t, target))
+   local r = self:normalizeTable(self:sendMessage(t, target))
 
-  print(i(r))
-  print("in2 callExtFunction")
   if callbackobject then
     self:addFunction(r.id, callbackobject, callbackfunction, self.messageCallback)
   end
@@ -412,13 +405,10 @@ function JC:handleMessage()
   --parse all messages
   if self:messageLength(t) > 0 then
     --nomalize table for easier accessing
-    print(i(t))
     t = self:normalizeTable(t)
 
-    print(i(t))
     if self:messageLength(t) > 0 then
       if t.m.type == "call" then
-        print(i(t))
         print("invoking callback (".. t.m.func ..") with table: ")
         print(i(t.m.args))
         local r = nil
@@ -433,13 +423,9 @@ function JC:handleMessage()
           self:invokeTrigger(t.m.func)
         end
         
-        print("return to sender")
-        print(i(r))
-        --return to sender - as elvis would have said
-        
-        print(i(self:sendMessage(r, t.sender, t.id)))
+         --return to sender - as elvis would have said
+        self:sendMessage(r, t.sender, t.id)
       elseif t.m.type == "response" then
-        print(i(self.messageCallback))
         if type(t.m.args) == "table" then
           self:invokeCallbackMessageTable(t.id, t.m.response)
         else
