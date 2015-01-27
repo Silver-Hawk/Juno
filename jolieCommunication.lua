@@ -353,53 +353,6 @@ function JC:callMultipleExtFunction(funcId, args, targets, callbackobject, callb
   end
 end
 
---[[
-function JC:handleMessages()
-  local msgs = self:getMessages()
-
-  if self:messageLength(msgs) > 0 then
-    print("in handle message")
-    if msgs ~= nil and msgs ~= {} then
-      print(i(msgs))
-    end
-    print("in handle message after")
-  end
-  --parse all messages
-  for k,t in pairs(msgs) do
-    --nomalize table for easier accessing
-    print(i(t))
-    t = self:normalizeTable(t)
-
-    print(i(t))
-    if self:messageLength(t) > 0 then
-      if t.m.type == "call" then
-        print(i(t))
-        print("invoking callback (".. t.m.func ..") with table: ")
-        print(i(t.m.args))
-        local r = nil
-        if type(t.m.args) == "table" then
-          r = {['type'] = 'response', ['response'] = self:invokeCallback(t.m.func, unpack(t.m.args))}
-        else
-          r = {['type'] = 'response', ['response'] = self:invokeCallback(t.m.func, t.m.args)}
-        end
-
-        print("return to sender")
-        print(i(r))
-        --return to sender - as elvis would have said
-        
-        print(i(self:sendMessage(r, t.sender, t.id)))
-      elseif t.m.type == "response" then
-        print(i(self.messageCallback))
-        if type(t.m.args) == "table" then
-          self:invokeCallbackMessageTable(t.id, unpack(t.m.response))
-        else
-          self:invokeCallbackMessageTable(t.id, t.m.response)
-        end
-      end
-    end
-  end
-end]]
-
 function JC:handleMessage()
   local t = self:getMessage()
   --parse all messages
@@ -420,7 +373,7 @@ function JC:handleMessage()
 
         if self.triggers[t.m.func] then
           print("invoking trigger for function " .. t.m.func)
-          self:invokeTrigger(t.m.func)
+          self:invokeTrigger(t.m.func, t.m.args)
         end
         
          --return to sender - as elvis would have said

@@ -102,7 +102,11 @@ function Hand:colorToImage(int)
   return colorToimageTable[int+1]
 end
 
-function Hand:toJunoNumber(int)
+function Hand:toJunoNumber(int, color)
+  if color == 4 and int == 0 then
+    return "+4"
+  end
+
   if int >= 0 and int <= 9 then
     return int
   end
@@ -114,8 +118,10 @@ function Hand:toJunoNumber(int)
   return int
 end
 
-function drawCard(x, y, txt, image, angle, scale)
-    love.graphics.setColor(255,255,255)
+function drawCard(x, y, txt, image, angle, scale, alpha)
+    alpha = alpha or 255
+
+    love.graphics.setColor(255,255,255, alpha)
 
     -- rotate around the center of the screen by angle radians
     love.graphics.translate(x, y)
@@ -123,7 +129,7 @@ function drawCard(x, y, txt, image, angle, scale)
     love.graphics.translate(-x, -y)
 
     love.graphics.draw(image, x, y, 0, scale, scale, 425/2, 500/2)
-    love.graphics.setColor(0,0,0)
+    love.graphics.setColor(0,0,0, alpha)
     
     local font = fonts["font"]
     love.graphics.setFont(font)
@@ -135,7 +141,7 @@ function drawCard(x, y, txt, image, angle, scale)
     love.graphics.setFont(font)
     local txtw = font:getWidth(txt)
     local txth = font:getHeight(txt)
-    love.graphics.setColor(0,0,0) --border color
+    love.graphics.setColor(0,0,0,alpha) --border color
     love.graphics.print(txt, x-(scale*150)-1, y-(scale*165)-1, 0, (scale*3), (scale*3), txtw/2, txth/2)
     love.graphics.print(txt, x-(scale*150)+1, y-(scale*165)-1, 0, (scale*3), (scale*3), txtw/2, txth/2)
     love.graphics.print(txt, x-(scale*150)-1, y-(scale*165)+1, 0, (scale*3), (scale*3), txtw/2, txth/2)
@@ -147,11 +153,11 @@ function drawCard(x, y, txt, image, angle, scale)
     love.graphics.print(txt, x+(scale*150)+1, y+(scale*165)+1, math.rad(180), (scale*3), (scale*3), txtw/2, txth/2)
 
 
-    love.graphics.setColor(255,255,255)
-    --love.graphics.print(txt, dx+50, dy-55, 0, 1, 1, txtw/2, (txth/2))
+    love.graphics.setColor(255,255,255,alpha)
+
     love.graphics.print(txt, x-(scale*150), y-(scale*165), 0, (scale*3), (scale*3), txtw/2, txth/2)
     love.graphics.print(txt, x+(scale*150), y+(scale*165), math.rad(180), (scale*3), (scale*3), txtw/2, txth/2)
-    --love.graphics.print(txt, dx-50, dy+55, 0, 1, 1, txtw/2, (txth/2))
+
     love.graphics.origin()
 end
 
@@ -176,14 +182,14 @@ end
 function Hand:draw()
   --draw animations
   for k,v in ipairs(self.animations) do
-    drawCard(v.x, v.y, self:toJunoNumber(tonumber(v.tc[1])),images[self:colorToImage(v.tc[2])], v.rot, 1/5)
+    drawCard(v.x, v.y, self:toJunoNumber(tonumber(v.tc[1]), v.tc[2]),images[self:colorToImage(v.tc[2])], v.rot, 1/5)
   end
 
   --draw cards selected
   for k,v in ipairs(self.cardsselected) do
     local x,y = 300+30*k,400
     local c = self.cards[v]
-    drawCard(x, y, self:toJunoNumber(tonumber(c[1])),images[self:colorToImage(c[2])], 0, 1/7)
+    drawCard(x, y, self:toJunoNumber(tonumber(c[1]), c[2]),images[self:colorToImage(c[2])], 0, 1/7)
   end
 
   --draw cards
@@ -195,7 +201,7 @@ function Hand:draw()
     end
     if v[3] then
       local x,y,r = self:getCardPlace(k-1)
-      drawCard(x, y-(v[4]*30), self:toJunoNumber(tonumber(v[1])),images[self:colorToImage(v[2])], r, 1/5)
+      drawCard(x, y-(v[4]*30), self:toJunoNumber(tonumber(v[1]), v[2]),images[self:colorToImage(v[2])], r, 1/5)
     end
   end
 end
@@ -222,20 +228,29 @@ function Hand:assertUnoRules(selectedcard, cardsinplay)
     if self.cards[selectedcard][1] == self.cards[self.cardsselected[1]][1] then
       return true
     end
-    print("enter 1")
   else
     --if no cards are in play and no cards are selected then return true
     if #cardsinplay == 0 then
-      print("enter 2")
       return true
     else
-      --if selected cards is the same color or type as the last one in play
-      if self.cards[selectedcard][1] == cardsinplay[#cardsinplay][1] or self.cards[selectedcard][2] == cardsinplay[#cardsinplay][2] then
+      --if selected cards is the same color or type as the last one in play, or if it's a wildcard
+      if self.cards[selectedcard][1] == cardsinplay[#cardsinplay][1] or self.cards[selectedcard][2] == cardsinplay[#cardsinplay][2] or self.cards[selectedcard][2] == 4 or cardsinplay[#cardsinplay][2] == 4 then
         return true
       end 
-      print("enter 3")
     end
-    print("enter 4")
+  end
+  return false
+end
+
+function Hand:getCardRules(card)
+  if card[2] == 4 then
+    return "+4"
+  elseif card[1] == 10 then
+    return "Ø"
+  elseif card[1] == 11 then
+    return "R"
+  elseif card[1] == 12 then
+    return "+2"
   end
   return false
 end
@@ -263,23 +278,23 @@ end
 function Hand:getSelectedCards()
   local t = {}
 
-  print(i(t))
-  for k,v in ipairs(self.cardsselected) do
-    print(v)
-    t["card"..k] = {self.cards[v][1], self.cards[v][2]}
-    self.cards[v] = nil
+  for k=#self.cardsselected,1,-1 do
+    local c = self.cardsselected[k]
+    t["card"..k] = {self.cards[c][1], self.cards[c][2]}
+    self.cards[c] = {}
   end
 
-  for k,v in ipairs(self.cards) do
-    if v == nil then
+  --make all cards visible
+  for k=#self.cards,1,-1 do
+    if #self.cards[k] == 0 then
       table.remove(self.cards, k)
+    else
+      self.cards[k][3] = true
     end
   end
+
   --reset selected cards
   self.cardsselected = {}
-
-  print("Cards in hand is " .. #self.cards)
-  print(i(self.cards))
 
   return t
 end

@@ -41,7 +41,7 @@ function Deck:initialize()
   end
 
   --make sure that all cards are created
-  --left out change color card
+  --left out change color card 
   print(assert(#self.cards) == 104)
 end
 

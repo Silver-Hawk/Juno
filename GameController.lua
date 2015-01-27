@@ -9,6 +9,9 @@ function GameController:initialize(myhostip)
   self.whoHasTurn = 0
   self.gameisstarted = false
   self.cardinplay = {}
+  self.lastcardinplay = {}
+  self.direction = 1
+  self.winner = 0
 end
 
 function GameController:start(clients)
@@ -16,8 +19,27 @@ function GameController:start(clients)
   self.gameisstarted = true
 end
 
+function GameController:setWinner(i)
+  self.winner = i
+end
+
+function GameController:hasSomebodyWon()
+  return self.winner ~= 0
+end
+
+function GameController:winnerIsMe()
+  return self.me == self.winner
+end
+
 function GameController:setCardsInPlay(t)
-  print(i(t))
+  --add old cards to view them as faded
+
+  for k,v in ipairs(self.cardinplay) do
+    table.insert(self.lastcardinplay, v)
+  end
+
+  self.cardinplay = {}
+
   local count = 1
   while t["card"..count] ~= nil do
     table.insert(self.cardinplay, t["card"..count])
@@ -35,6 +57,22 @@ function GameController:inplayCard()
   return self.cardinplay
 end
 
+function GameController:changeDirection()
+  self.direction = self.direction * -1
+end
+
+function GameController:getDirection(i)
+  return self.direction
+end
+
+function GameController:setDirection(i)
+  self.direction = i
+end
+
+function GameController:lastInplayCard()
+  return self.lastcardinplay
+end
+
 function GameController:setTurn(i)
   self.whoHasTurn = tonumber(i)
 end
@@ -43,11 +81,16 @@ function GameController:giveTurn(skips)
   skips = skips or 0
 
   --set who has the turn and skip players if any
-  self.whoHasTurn = self.whoHasTurn + 1 + skips
+  self.whoHasTurn = self.whoHasTurn + ((1 + skips) * self.direction)
 
   --stay within the player array 
   while self.whoHasTurn > #self.clients do
     self.whoHasTurn = self.whoHasTurn - #self.clients
+  end
+
+  --if the opposite direction is used make sure we stay within number of clients
+  while self.whoHasTurn < 1 do
+    self.whoHasTurn = self.whoHasTurn + #self.clients
   end
 
   return self.whoHasTurn
