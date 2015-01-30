@@ -2,6 +2,8 @@
   Jolie based connector class to send/recieve SOAP messages
 
   Jolie-lang.org for more information
+
+  @Author Jesper Lund 
 ]]
 
 class = require 'middleclass'
@@ -49,11 +51,6 @@ function JC:updateClient(host, port)
 end
 
 function JC:getIpAndPort()
-  --[[if(self.client) then
-    local ip, port = self.client:getpeername() end
-  if(self.server) then
-    local ip, port = self.server:getIpAndPort() end
-  ]]
   local ip, port = self.clienthost, self.clientport
   return ip, port
 end
@@ -283,7 +280,7 @@ function JC:jolieServer(path, ip, port)
   ip = ip or "localhost"
 
   --socket://localhost:8090
-  self.jhandle = io.popen('jolie '.. path ..' -C myLocation=\\"socket://'.. ip ..':' .. port ..'\\" -C targetLocation=\\"\\"')
+  self.jhandle = io.popen('jolie -C myLocation=\\"socket://'.. ip ..':' .. port ..'\\" '.. path ..'')
   --self.jhandle = io.popen('jolie ./jolie-server/test/server.ol -C myLocation=\\"socket://localhost:' .. port ..'\\"')
   line = self.jhandle:read()
 

@@ -7,17 +7,9 @@ inputPort Input {
 	Interfaces: MyInterface
 }
 
-outputPort Output {
-    Location: targetLocation
-    Protocol: soap
-    Interfaces: MyInterface
-}
-
 constants
 {
     myLocation = "",
-    targetLocation = "",
-    myName = ""
 }
 
 execution{ concurrent }
@@ -38,7 +30,6 @@ main
 				undef(global.messages[0])
 			}
 		}
-	
 	]{
 		nullProcess
 	}
@@ -67,41 +58,5 @@ main
 		}
 	] { 
 		nullProcess
-	}
-
-		
-	//Lobby operations
-	[
-		startLobby( void ) ( r ) {
-			iplist[#iplist] = Input.location;
-			lobbystarted = true;
-			r.iplist << iplist
-		}
-	] {
-		undef(r)
-	}
-	[
-		joinLobby( m ) ( r ) {
-			//check if we are on the right server
-			if(m.target == input.location)
-				if(lobbystarted)
-				{
-					iplist[#iplist] = m.sender;
-					r.iplist << iplist
-				}
-				else
-				{
-					r = null
-				}
-			//otherwise forward to target server
-			else
-			{
-				Output.location = m.target;
-				joinLobby@Output( m ) ( r )
-			}
-
-		}
-	] {
-		undef(r)
 	}
 }
